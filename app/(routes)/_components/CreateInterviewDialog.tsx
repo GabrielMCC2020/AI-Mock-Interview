@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useContext, useState } from 'react'
 import {
   Dialog,
   DialogClose,
@@ -13,14 +13,47 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import ResumeUpload from './ResumeUpload'
 import JobDescription from './JobDescription'
+import axios from 'axios'
+import { Loader2Icon } from 'lucide-react'
+import { useMutation } from 'convex/react'
+import { api } from '@/convex/_generated/api'
+import { UserDetailContext } from '@/context/UserDetailContext'
+
 function CreateInterviewDialog() {
   const [formData, setFormData] = useState<any>();
-
+  const [file, setFile] = useState<File | null>();
+  const [loading, setLoading] = useState(false);
+  const { userDetail, setUserDetail } = useContext(UserDetailContext);
+  const saveInterviewQuestion = useMutation(api.Interview.SaveInterviewQuestion)
   const onHandleInputChange = (field: string, value: string) => {
     setFormData((prev: any) => ({
       ...prev,
       [field]: value
     }))
+  }
+
+  const onSubmit = async () => {
+    if (!file) return;
+    setLoading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await axios.post('api/generate-interview-questions', formData);
+      console.log(res.data);
+      // Save to Database
+      const resp = await saveInterviewQuestion({
+        questions: res.data?.questions,
+        resumeUrl: res?.data.resumeUrl,
+        uid: userDetail?._id
+      });
+
+      console.log(resp);      
+
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -37,7 +70,7 @@ function CreateInterviewDialog() {
                 <TabsTrigger value="resume-upload">Resume Upload</TabsTrigger>
                 <TabsTrigger value="job-description">Job Description</TabsTrigger>
               </TabsList>
-              <TabsContent value="resume-upload"><ResumeUpload /></TabsContent>
+              <TabsContent value="resume-upload"><ResumeUpload setFiles={(file: File) => setFile(file)} /></TabsContent>
               <TabsContent value="job-description"><JobDescription onHandleInputChange={onHandleInputChange} />
               </TabsContent>
             </Tabs>
@@ -47,7 +80,8 @@ function CreateInterviewDialog() {
           <DialogClose>
             <Button variant={'ghost'}>Cancel</Button>
           </DialogClose>
-          <Button>Submit</Button>
+          <Button onClick={onSubmit} disabled={loading || !file} >
+            {loading && <Loader2Icon className='animate-spin mr-2' />}Submit</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
