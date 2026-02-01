@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import ImageKit, { toFile } from '@imagekit/nodejs';
 import axios from "axios";
+import { aj } from "@/utils/arcjet";
+import { currentUser } from "@clerk/nextjs/server";
 
 const client = new ImageKit({
   // publicKey: process.env['IMAGEKIT_URL_PUBLIC_KEY'] || '',
@@ -8,22 +10,25 @@ const client = new ImageKit({
   // urlEndpoint: process.env['IMAGEKIT_URL_ENDPOINT'] || ''
 });
 
-// Finally, if none of the above are convenient, you can use our `toFile` helper:
-// await client.files.upload({
-//   file: await toFile(Buffer.from('my bytes'), 'file'),
-//   fileName: 'fileName',
-// });
-// await client.files.upload({
-//   file: await toFile(new Uint8Array([0, 1, 2]), 'file'),
-//   fileName: 'fileName',
-// });
-
 export async function POST(req: NextRequest) {
   try {
+    const user = await currentUser();
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const jobTitle = formData.get('jobTitle') as File;
     const jobDescription = formData.get('jobDescription') as File;
+
+    const decision = await aj.protect(req, { userId: user?.primaryEmailAddress?.emailAddress ?? '', requested: 5 });
+    console.log("Arcjet decision", decision);
+
+    // @ts-ignore
+    if (decision?.reason?.remaining == 0) {
+      return NextResponse.json({
+        status: 429,
+        result: 'No free credits remaining, Try again after 24 hours.'
+      },
+      );
+    }
 
     if (file) {
 
@@ -47,7 +52,8 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         questions: result.data?.message?.content?.questions,
-        resumeUrl: uploadResponse?.url
+        resumeUrl: uploadResponse?.url,
+        status: 200
       });
     } else {
       const result = await axios.post('https://n8n.srv1306944.hstgr.cloud/webhook/generate-interview-question', {

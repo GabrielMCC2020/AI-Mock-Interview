@@ -8,6 +8,8 @@
     "start": "next start"
   },
   "dependencies": {
+    "@arcjet/inspect": "^1.0.0",
+    "@arcjet/next": "^1.0.0",
     "@clerk/nextjs": "^6.36.10",
     "@imagekit/nodejs": "^7.2.2",
     "@radix-ui/react-dialog": "^1.1.15",
