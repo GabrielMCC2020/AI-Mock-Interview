@@ -1,3 +1,4 @@
+import JobDescription from "@/app/(routes)/_components/JobDescription";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
@@ -10,8 +11,10 @@ export default defineSchema({
 
     InterviewSessionTable: defineTable({
         interviewQuestions: v.any(),
-        resumeUrl: v.string(),
+        resumeUrl: v.union(v.string(), v.null()),
         userId: v.id('UserTable'),
-        status: v.string()
+        status: v.string(),
+        jobTitle: v.union(v.string(), v.null()),
+        JobDescription: v.union(v.string(), v.null())
     })
 })

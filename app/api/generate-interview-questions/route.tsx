@@ -22,32 +22,46 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
+    const jobTitle = formData.get('jobTitle') as File;
+    const jobDescription = formData.get('jobDescription') as File;
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file found' }, { status: 400 });
+    if (file) {
+
+      console.log("file", formData)
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      const uploadResponse = await client.files.upload({
+        file: await toFile(buffer, file.name), // NOT required
+        fileName: `upload-${Date.now()}.pdf`,
+        isPrivateFile: false, // optional
+        useUniqueFileName: true,
+      });
+
+      // Call n8n Webhook
+
+      const result = await axios.post('https://n8n.srv1306944.hstgr.cloud/webhook/generate-interview-question', {
+        resumeUrl: uploadResponse?.url
+      });
+      console.log(result.data)
+
+      return NextResponse.json({
+        questions: result.data?.message?.content?.questions,
+        resumeUrl: uploadResponse?.url
+      });
+    } else {
+      const result = await axios.post('https://n8n.srv1306944.hstgr.cloud/webhook/generate-interview-question', {
+        resumeUrl: null,
+        jobTitle: jobTitle,
+        jobDescription: jobDescription
+      });
+      console.log(result.data)
+
+      return NextResponse.json({
+        questions: result.data?.message?.content?.questions,
+        resumeUrl: null
+      });
     }
-    console.log("file", formData)
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const uploadResponse = await client.files.upload({
-      file: await toFile(buffer, file.name), // NOT required
-      fileName: `upload-${Date.now()}.pdf`,
-      isPrivateFile: false, // optional
-      useUniqueFileName: true,
-    });
-
-    // Call n8n Webhook
-
-    const result = await axios.post('https://n8n.srv1306944.hstgr.cloud/webhook/generate-interview-question', {
-      resumeUrl: uploadResponse?.url
-    });
-    console.log(result.data)
-
-    return NextResponse.json({
-      questions: result.data?.message?.content?.questions,
-      resumeUrl: uploadResponse?.url
-    });
 
   } catch (error: any) {
     console.error('Upload error:', error);
