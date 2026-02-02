@@ -3,7 +3,7 @@ import { Outfit } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ConvexClientProvider } from "./ConvexClientProvider";
-import { UserDetailProvider } from "@/context/UserDetailContext";
+import { Toaster } from "@/components/ui/sonner";
 
 
 export const metadata: Metadata = {
@@ -20,14 +20,13 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning={true}>
       <body
         className={outfit.className}
       > 
         <ConvexClientProvider>
-          <UserDetailProvider>
-            {children}
-          </UserDetailProvider>
+          {children}
+          <Toaster />
         </ConvexClientProvider>
       </body>
     </html>
