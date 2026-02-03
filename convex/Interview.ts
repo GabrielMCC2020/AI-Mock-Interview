@@ -51,3 +51,17 @@ export const UpdateFeedback=mutation({
   }
 })
 
+export const GetInterviewList=query({
+  args:{
+    uid: v.id('UserTable')
+  },
+  handler: async (ctx, args)=>{
+    const result = await ctx.db.query('InterviewSessionTable')
+    .filter(q=>q.eq(q.field('userId'), args.uid))
+    .order('desc')
+    .collect();
+
+    return result;
+
+  }
+})

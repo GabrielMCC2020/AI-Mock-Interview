@@ -4,17 +4,19 @@ import axios from 'axios';
 import { useConvex, useMutation } from 'convex/react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react'
-import { Button } from '@/components/ui/button';
 import { Mic, MicOff, PhoneCall, PhoneOff, User } from 'lucide-react';
 import { toast } from 'sonner';
+import { FeedbackInfo } from '@/app/(routes)/dashboard/_components/FeedbackDialog';
 
-
-type InterviewData = {
+export type InterviewData = {
   jobTitle: string | null,
   JobDescription: string | null,
   interviewQuestions: InterviewQuestions[],
   userId: string | null,
-  _id: string
+  _id: string,
+  resumeUrl: string | null,
+  status: string | null,
+  feedback: FeedbackInfo | null
 }
 
 type InterviewQuestions = {
@@ -51,7 +53,7 @@ function StartInterview() {
     const result = await convex.query(api.Interview.GetInterviewQuestions, {
       //@ts-ignore
       interviewRecordId: interviewId
-    });
+    }) as InterviewData;
     console.log(result);
     setInterviewData(result);
   }
