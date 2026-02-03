@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import ImageKit, { toFile } from '@imagekit/nodejs';
 import axios from "axios";
 import { aj } from "@/utils/arcjet";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
 const client = new ImageKit({
   // publicKey: process.env['IMAGEKIT_URL_PUBLIC_KEY'] || '',
@@ -17,12 +17,12 @@ export async function POST(req: NextRequest) {
     const file = formData.get('file') as File;
     const jobTitle = formData.get('jobTitle') as File;
     const jobDescription = formData.get('jobDescription') as File;
-
+    const { has } = await auth();
     const decision = await aj.protect(req, { userId: user?.primaryEmailAddress?.emailAddress ?? '', requested: 5 });
     console.log("Arcjet decision", decision);
-
+    const isSubscribedUser = has({ plan: 'pro' })
     // @ts-ignore
-    if (decision?.reason?.remaining == 0) {
+    if (decision?.reason?.remaining == 0 && !isSubscribedUser) {
       return NextResponse.json({
         status: 429,
         result: 'No free credits remaining, Try again after 24 hours.'
