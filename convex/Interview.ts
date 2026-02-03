@@ -37,3 +37,17 @@ export const GetInterviewQuestions = query({
   }
 })
 
+export const UpdateFeedback=mutation({
+  args:{
+    recordId:v.id('InterviewSessionTable'),
+    feedback:v.any()
+  },
+  handler:async(ctx, args)=>{
+    const result = await ctx.db.patch(args.recordId, {
+        feedback:args.feedback,
+        status:'complete'
+    });
+    return result;
+  }
+})
+

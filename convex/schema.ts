@@ -15,6 +15,7 @@ export default defineSchema({
         userId: v.id('UserTable'),
         status: v.string(),
         jobTitle: v.union(v.string(), v.null()),
-        JobDescription: v.union(v.string(), v.null())
+        JobDescription: v.union(v.string(), v.null()),
+        feedback: v.optional(v.any())
     })
 })

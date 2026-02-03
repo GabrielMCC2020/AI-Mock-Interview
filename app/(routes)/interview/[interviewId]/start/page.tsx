@@ -1,12 +1,12 @@
 "use client"
 import { api } from '@/convex/_generated/api';
 import axios from 'axios';
-import { useConvex } from 'convex/react';
-import { useParams } from 'next/navigation';
-import React, { use, useEffect, useRef, useState } from 'react'
-import { GenericAgoraSDK } from 'akool-streaming-avatar-sdk';
+import { useConvex, useMutation } from 'convex/react';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, PhoneCall, PhoneOff, User } from 'lucide-react';
+import { toast } from 'sonner';
 
 
 type InterviewData = {
@@ -28,6 +28,7 @@ type Messages = {
 }
 const CONTANIER_ID = 'akool-avatar-container';
 const AVATAR_ID = 'data_lira_sp-02'
+
 function StartInterview() {
   const { interviewId } = useParams();
   const convex = useConvex();
@@ -35,10 +36,13 @@ function StartInterview() {
   const videoContainerRef = useRef<any>(null);
   const [micOn, setMicOn] = useState(false);
   const [kbId, setKbId] = useState<string | null>();
-  const [agoraSdk, setAgoraSdk] = useState<GenericAgoraSDK | null>(null);
+  const [agoraSdk, setAgoraSdk] = useState<any>(null);
+  const [GenericAgoraSDK, setGenericAgoraSDK] = useState<any>(null);
   const [joined, setJoined] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState<Messages[]>();
+  const [messages, setMessages] = useState<Messages[]>([]);
+  const updateFeedback = useMutation(api.Interview.UpdateFeedback)
+  const router = useRouter();
   useEffect(() => {
     GetInterviewQuestions();
   }, [interviewId])
@@ -55,6 +59,19 @@ function StartInterview() {
     interviewData && GetKnowledgeBase();
   }, [interviewData])
 
+  useEffect(() => {
+    // Dynamically import the SDK on client side
+    const loadSDK = async () => {
+      try {
+        const { GenericAgoraSDK: SDK } = await import('akool-streaming-avatar-sdk');
+        setGenericAgoraSDK(() => SDK);
+      } catch (error) {
+        console.error('Failed to load Agora SDK:', error);
+      }
+    };
+    loadSDK();
+  }, [])
+
   const GetKnowledgeBase = async () => {
     const result = await axios.post('/api/akcool-knowledge-base', {
       questions: interviewData?.interviewQuestions
@@ -64,25 +81,27 @@ function StartInterview() {
   }
 
   useEffect(() => {
+    if (!GenericAgoraSDK) return;
+
     const sdk = new GenericAgoraSDK({ mode: "rtc", codec: "vp8" });
 
     // Register event handlers
     sdk.on({
-      onStreamMessage: (uid, message) => {
+      onStreamMessage: (uid: any, message: any) => {
         console.log("Received message from", uid, ":", message);
         //@ts-ignore
         message.pld?.text?.length > 0 && setMessages((prev: any) => [...prev, message.pld]);
       },
-      onException: (error) => {
+      onException: (error: any) => {
         console.error("An exception occurred:", error);
       },
-      onMessageReceived: (message) => {
+      onMessageReceived: (message: any) => {
         console.log("New message:", message);
       },
-      onMessageUpdated: (message) => {
+      onMessageUpdated: (message: any) => {
         console.log("Message updated:", message);
       },
-      onNetworkStatsUpdated: (stats) => {
+      onNetworkStatsUpdated: (stats: any) => {
         console.log("Network stats:", stats);
       },
       onTokenWillExpire: () => {
@@ -91,7 +110,7 @@ function StartInterview() {
       onTokenDidExpire: () => {
         console.log("Token expired");
       },
-      onUserPublished: async (user, mediaType) => {
+      onUserPublished: async (user: any, mediaType: any) => {
         if (mediaType === 'video') {
           await sdk.getClient().subscribe(user, mediaType);
           user?.videoTrack?.play(videoContainerRef.current)
@@ -109,7 +128,7 @@ function StartInterview() {
       sdk.leaveChannel();
       sdk.closeStreaming();
     }
-  }, [])
+  }, [GenericAgoraSDK])
 
   const StartConversation = async () => {
     try {
@@ -166,11 +185,38 @@ function StartInterview() {
     await agoraSdk.closeStreaming();
     setJoined(false);
     setMicOn(false);
+
+    await GenerateFeedback();
+
   }
+
   const toggleMic = async () => {
     if (!agoraSdk) return;
     await agoraSdk?.toggleMic();
     setMicOn(agoraSdk?.isMicEnabled());
+  }
+
+  useEffect(() => {
+    console.log(JSON.stringify(messages))
+  }, [messages])
+
+  const GenerateFeedback = async () => {
+    toast.warning('Generating Feedback, please wait...')
+    const result = await axios.post('/api/interview-feedback', {
+      messages: messages || []
+    });
+    console.log(result.data);
+    toast.success('Feedback Ready!')
+    //Save the feedback
+    const resp = await updateFeedback({
+      feedback: result.data,
+      // @ts-ignore
+      recordId: interviewId
+    });
+    console.log(resp);
+    toast.success('Interview Completed!');
+    //Navigate
+    router.replace('/dashboard');
   }
 
   return (
