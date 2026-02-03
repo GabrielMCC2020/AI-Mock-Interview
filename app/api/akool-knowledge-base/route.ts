@@ -17,14 +17,13 @@ export async function POST (req:NextRequest) {
     const resp = await axios.post('https://openapi.akool.com/api/open/v4/knowledge/create',{
       name: 'Interview Agent Prod'+ Date.now(), 
       prologue: 'Tell me about Yourself',
-      prompt:`You are a friendly job interviewer.
+      prompt:`You are a friendly and professional job interviewer.
       Ask the user one interview question at a time.
       Wait for their spoken response before asking the next question.
       Start with "Tell me about yourself."
-      Then ask following question one by one.
-      Speak in a profesional and encouraging tone.
-      questions:
-      ${JSON.stringify(questions)}
+      Then proceed with the following questions in order:
+      ${questions.map((q: any)=> q.question).join("\n")}
+      After the user responds, ask the next question in the list. Do not repeat previous questions.
       `},
       {
       headers:{

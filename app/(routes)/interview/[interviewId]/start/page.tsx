@@ -112,36 +112,51 @@ function StartInterview() {
   }, [])
 
   const StartConversation = async () => {
+    try {
+      if (!agoraSdk) return;
+      setLoading(true);
+      //Create Akool Session
+      const result = await axios.post('/api/akool-session', {
+        avatar_id: AVATAR_ID,
+        knowledge_id: kbId
+      });
 
-    if (!agoraSdk) return;
-    setLoading(true);
-    //Create Akool Session
-    const result = await axios.post('/api/akool-session', {
-      avatar_id: AVATAR_ID,
-      knowledge_id: kbId
-    });
+      console.log(result.data);
+      const credentials = result?.data?.data?.credentials
+      // Connect to Agora Channel and start chat
+      if (!credentials) throw new Error("Missing Credentials");
+      await agoraSdk?.joinChannel({
+        agora_app_id: credentials.agora_app_id,
+        agora_channel: credentials.agora_channel,
+        agora_token: credentials.agora_token,
+        agora_uid: credentials.agora_uid
+      });
 
-    console.log(result.data);
-    const credentials = result?.data?.data?.credentials
-    // Connect to Agora Channel and start chat
-    if (!credentials) throw new Error("Missing Credentials");
-    await agoraSdk?.joinChannel({
-      agora_app_id: credentials.agora_app_id,
-      agora_channel: credentials.agora_channel,
-      agora_token: credentials.agora_token,
-      agora_uid: credentials.agora_uid
-    });
+      await agoraSdk.joinChat({
+        vid: "en-US-Wavenet-A",
+        lang: "en",
+        mode: 2 // 1 for repeat mode, 2 for dialog mode
+      });
 
-    await agoraSdk.joinChat({
-      vid: "en-US-Wavenet-A",
-      lang: "en",
-      mode: 2 // 1 for repeat mode, 2 for dialog mode
-    });
+      const Prompt = `You are a friendly and professional job interviewer.
+      Ask the user one interview question at a time.
+      Wait for their spoken response before asking the next question.
+      Start with "Tell me about yourself."
+      Then proceed with the following questions in order:
+      ${interviewData?.interviewQuestions.map((q: any) => q.question).join("\n")}
+      After the user responds, ask the next question in the list. Do not repeat previous questions.
+      `
+      await agoraSdk.sendMessage(Prompt);
 
-    await agoraSdk.toggleMic();
-    setMicOn(true);
-    setJoined(true);
-    setLoading(false);
+      await agoraSdk.toggleMic();
+      setMicOn(true);
+      setJoined(true);
+    }
+    catch (e) {
+
+    } finally {
+      setLoading(false);
+    }
   }
 
   const leaveConversation = async () => {
@@ -217,26 +232,26 @@ function StartInterview() {
             </>
           )}
         </div>
+      </div>
 
-        <div className='flex flex-col p-6 lg:w-1/3 h-screen overflow-y-auto'>
-          <h2 className='text-lg font-semibold my-4'>Conversation</h2>
-          <div className='flex-1  border border-gray-200 rounded-xl p-4 space-y-3'>
-            {messages?.length == 0 ?
-              <div>
-                <p>No Messages yet</p>
-              </div>
-              :
-              <div>
-                {messages?.map((msg, index) => (
-                  <div key={index}>
-                    <h2 className={`p-3 rounded-lg max-w-[80%] mt-1
-                      ${msg.from == 'user' ? "bg-blue-100 text-blue-700 self-start" :
-                        "bg-green-100 text-green-700 self-end"}`}>{msg.text}</h2>
-                  </div>
-                ))}
-              </div>
-            }
-          </div>
+      <div className='flex flex-col p-6 lg:w-1/3 h-screen overflow-y-auto'>
+        <h2 className='text-lg font-semibold my-4'>Conversation</h2>
+        <div className='flex-1  border border-gray-200 rounded-xl p-4 space-y-3'>
+          {messages?.length == 0 ?
+            <div>
+              <p>No Messages yet</p>
+            </div>
+            :
+            <div>
+              {messages?.map((msg, index) => (
+                <div key={index}>
+                  <h2 className={`p-3 rounded-lg max-w-[80%] mt-1
+                    ${msg.from == 'user' ? "bg-blue-100 text-blue-700 self-start" :
+                      "bg-green-100 text-green-700 self-end"}`}>{msg.text}</h2>
+                </div>
+              ))}
+            </div>
+          }
         </div>
       </div>
     </div>
