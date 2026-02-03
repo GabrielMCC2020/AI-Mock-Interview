@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import React, { use, useEffect, useRef, useState } from 'react'
 import { GenericAgoraSDK } from 'akool-streaming-avatar-sdk';
 import { Button } from '@/components/ui/button';
+import { Mic, MicOff, PhoneCall, PhoneOff, User } from 'lucide-react';
 
 
 type InterviewData = {
@@ -21,6 +22,10 @@ type InterviewQuestions = {
   question: string
 }
 
+type Messages = {
+  from: 'user' | 'bot',
+  text: string
+}
 const CONTANIER_ID = 'akool-avatar-container';
 const AVATAR_ID = 'data_lira_sp-02'
 function StartInterview() {
@@ -32,6 +37,8 @@ function StartInterview() {
   const [kbId, setKbId] = useState<string | null>();
   const [agoraSdk, setAgoraSdk] = useState<GenericAgoraSDK | null>(null);
   const [joined, setJoined] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useState<Messages[]>();
   useEffect(() => {
     GetInterviewQuestions();
   }, [interviewId])
@@ -63,6 +70,8 @@ function StartInterview() {
     sdk.on({
       onStreamMessage: (uid, message) => {
         console.log("Received message from", uid, ":", message);
+        //@ts-ignore
+        message.pld?.text?.length > 0 && setMessages((prev: any) => [...prev, message.pld]);
       },
       onException: (error) => {
         console.error("An exception occurred:", error);
@@ -105,6 +114,7 @@ function StartInterview() {
   const StartConversation = async () => {
 
     if (!agoraSdk) return;
+    setLoading(true);
     //Create Akool Session
     const result = await axios.post('/api/akool-session', {
       avatar_id: AVATAR_ID,
@@ -131,6 +141,7 @@ function StartInterview() {
     await agoraSdk.toggleMic();
     setMicOn(true);
     setJoined(true);
+    setLoading(false);
   }
 
   const leaveConversation = async () => {
@@ -148,22 +159,85 @@ function StartInterview() {
   }
 
   return (
-    <div>
-      <div ref={videoContainerRef}
-        id={CONTANIER_ID}
-        style={{
-          width: 640,
-          height: 480,
-          background: '#000000',
-          marginTop: 20
-        }}
-      >
-      </div>
-      <div>
-        <Button onClick={toggleMic}>{micOn ? "Mute Mic" : "Unmute Mic"}</Button>
-        {!joined ? <Button onClick={StartConversation}>Start Conversation</Button>
-          : <Button onClick={leaveConversation}>Leave Conversation</Button>
-        }
+    <div className='flex flex-col lg:flex-row w-full min-h-screen bg-gray-50'>
+      <div className='flex flex-col items-center p-6 lg:w-2/3'>
+        <h2 className='text-2xl font-bold mb-6'>Interview Sessions</h2>
+        <div ref={videoContainerRef}
+          id={CONTANIER_ID}
+          className='rounded-2xl overflow-hidden border bg-white flex items-center justify-center'
+          style={{
+            width: 640,
+            height: 480,
+            // background: '#000000',
+            marginTop: 20
+          }}
+        >
+          {!joined && (
+            <div>
+              <div>
+                <User size={40} className='text-gray-500' />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className='mt-6 flex space-x-4'>
+          {!joined ? (
+            <button onClick={StartConversation}
+              disabled={loading}
+              className="flex items-center px-5 py-3 bg-green-500 text-white hover:bg-green-400 rounded-full shadow-lg transition disabled:opacity-50">
+              <PhoneCall className="mr-2" size={20} />
+              {loading ? "Connecting..." : "Connect Call"}
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={toggleMic}
+                className={`flex items-center px-5 py-3 rounded-full shadow-lg transition ${micOn
+                  ? "bg-yellow-400 hover:bg-yellow-300 text-white"
+                  : "bg-gray-300 hover:bg-gray-200 text-gray-800"
+                  }`}
+              >
+                {micOn ? (
+                  <>
+                    <Mic className="mr-2" size={20} /> Mute
+                  </>
+                ) : (
+                  <>
+                    <MicOff className="mr-2 size={20}" /> Unmute
+                  </>
+                )}
+              </button>
+              <button
+                onClick={leaveConversation}
+                className="flex items-center px-5 py-3 bg-red-500 text-white hover:bg-red-400 rounded-full shadow-lg transition"
+              >
+                <PhoneOff className="mr-2" size={20} /> End Call
+              </button>
+            </>
+          )}
+        </div>
+
+        <div className='flex flex-col p-6 lg:w-1/3 h-screen overflow-y-auto'>
+          <h2 className='text-lg font-semibold my-4'>Conversation</h2>
+          <div className='flex-1  border border-gray-200 rounded-xl p-4 space-y-3'>
+            {messages?.length == 0 ?
+              <div>
+                <p>No Messages yet</p>
+              </div>
+              :
+              <div>
+                {messages?.map((msg, index) => (
+                  <div key={index}>
+                    <h2 className={`p-3 rounded-lg max-w-[80%] mt-1
+                      ${msg.from == 'user' ? "bg-blue-100 text-blue-700 self-start" :
+                        "bg-green-100 text-green-700 self-end"}`}>{msg.text}</h2>
+                  </div>
+                ))}
+              </div>
+            }
+          </div>
+        </div>
       </div>
     </div>
   )

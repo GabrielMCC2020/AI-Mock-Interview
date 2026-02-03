@@ -3,6 +3,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.video{
+  transform: scale(1.5) translateY(15%) !important;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
