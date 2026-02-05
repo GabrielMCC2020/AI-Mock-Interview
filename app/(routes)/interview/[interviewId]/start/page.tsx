@@ -75,7 +75,7 @@ function StartInterview() {
   }, [])
 
   const GetKnowledgeBase = async () => {
-    const result = await axios.post('/api/akcool-knowledge-base', {
+    const result = await axios.post('/api/akool-knowledge-base', {
       questions: interviewData?.interviewQuestions
     });
     console.log(result);

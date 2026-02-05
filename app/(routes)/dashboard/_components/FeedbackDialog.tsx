@@ -27,14 +27,14 @@ function FeedbackDialog({ feedbackInfo }: Props) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle className='font-bold text-2xl'>Interview Feedback</DialogTitle>
-          <DialogDescription>
+          <DialogDescription asChild>
             <div>
               <h2 className='font-bold text-xl text-black'>Feedback:</h2>
               <p className='text-lg'>{feedbackInfo?.feedback}</p>
               <div>
                 <h2 className='font-bold text-xl text-black mt-5'>Suggestion:</h2>
                 {feedbackInfo?.suggestions?.map((item, index) => (
-                  <h2 className='p-2 my-1 bg-gray-50 text-lg rounded-lg flex gap-2'>{item}</h2>
+                  <h2 key={index} className='p-2 my-1 bg-gray-50 text-lg rounded-lg flex gap-2'>{item}</h2>
                 ))}
               </div>
               <h2 className='font-bold text-xl text-primary'>Rating: <span className='text-primary'>{feedbackInfo?.rating}</span></h2>

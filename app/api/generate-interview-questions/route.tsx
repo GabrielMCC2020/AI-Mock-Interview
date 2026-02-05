@@ -15,8 +15,8 @@ export async function POST(req: NextRequest) {
     const user = await currentUser();
     const formData = await req.formData();
     const file = formData.get('file') as File;
-    const jobTitle = formData.get('jobTitle') as File;
-    const jobDescription = formData.get('jobDescription') as File;
+    const jobTitle = formData.get('jobTitle')?.toString() ?? null;
+    const jobDescription = formData.get('jobDescription')?.toString() ?? null;
     const { has } = await auth();
     const decision = await aj.protect(req, { userId: user?.primaryEmailAddress?.emailAddress ?? '', requested: 5 });
     console.log("Arcjet decision", decision);
@@ -29,6 +29,49 @@ export async function POST(req: NextRequest) {
       },
       );
     }
+
+    const extractQuestions = (data: any) => {
+      let questions = data?.message?.content?.questions;
+      const contentArray = data?.output?.[0]?.content;
+      const textContent = Array.isArray(contentArray)
+        ? contentArray.map((item: any) => item?.text ?? '').join('')
+        : '';
+
+      if (!questions && textContent) {
+        const sanitized = textContent
+          .replace(/```json/gi, '')
+          .replace(/```/g, '')
+          .trim();
+        try {
+          const parsed = JSON.parse(sanitized);
+          questions = parsed?.questions ?? parsed;
+        } catch (parseError) {
+          const jsonMatch = sanitized.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+          if (jsonMatch) {
+            try {
+              const parsed = JSON.parse(jsonMatch[0]);
+              questions = parsed?.questions ?? parsed;
+            } catch (nestedError) {
+              console.error('Failed to parse questions JSON:', nestedError);
+            }
+          } else {
+            console.error('Failed to parse questions JSON:', parseError);
+          }
+        }
+      }
+
+      if (!questions && textContent) {
+        const lines = textContent
+          .split(/\r?\n/)
+          .map((line) => line.replace(/^\s*\d+[\).\-]\s*/, '').trim())
+          .filter(Boolean);
+        if (lines.length > 0) {
+          questions = lines;
+        }
+      }
+
+      return questions;
+    };
 
     if (file) {
 
@@ -46,25 +89,45 @@ export async function POST(req: NextRequest) {
       // Call n8n Webhook
 
       const result = await axios.post('https://n8n.srv1306944.hstgr.cloud/webhook/generate-interview-question', {
-        resumeUrl: uploadResponse?.url
+        resumeUrl: uploadResponse?.url,
+        jobTitle,
+        jobDescription,
       });
       console.log(result.data)
 
+      const questions = extractQuestions(result.data);
+
+      if (!questions) {
+        return NextResponse.json({
+          error: 'No questions returned from workflow.',
+          status: 502,
+        }, { status: 502 });
+      }
+
       return NextResponse.json({
-        questions: result.data?.message?.content?.questions,
+        questions,
         resumeUrl: uploadResponse?.url,
         status: 200
       });
     } else {
       const result = await axios.post('https://n8n.srv1306944.hstgr.cloud/webhook/generate-interview-question', {
         resumeUrl: null,
-        jobTitle: jobTitle,
-        jobDescription: jobDescription
+        jobTitle,
+        jobDescription
       });
       console.log(result.data)
 
+      const questions = extractQuestions(result.data);
+
+      if (!questions) {
+        return NextResponse.json({
+          error: 'No questions returned from workflow.',
+          status: 502,
+        }, { status: 502 });
+      }
+
       return NextResponse.json({
-        questions: result.data?.message?.content?.questions,
+        questions,
         resumeUrl: null
       });
     }

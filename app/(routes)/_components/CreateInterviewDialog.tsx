@@ -39,9 +39,11 @@ function CreateInterviewDialog() {
 
     setLoading(true);
     const formData_ = new FormData();
-    formData_.append('file', file ?? '');
-    formData_?.append('jobTitle', formData?.jobTitle);
-    formData_?.append('jobDescription', formData?.jobDescription);
+    if (file) {
+      formData_.append('file', file);
+    }
+    formData_?.append('jobTitle', formData?.jobTitle ?? '');
+    formData_?.append('jobDescription', formData?.jobDescription ?? '');
     try {
       const res = await axios.post('api/generate-interview-questions', formData_);
       console.log(res.data);
@@ -49,6 +51,11 @@ function CreateInterviewDialog() {
       if (res?.data?.status == 429) {
         toast.warning(res?.data?.result)        
         console.log(res?.data?.result);
+        return;
+      }
+
+      if (res?.data?.error || !res?.data?.questions) {
+        toast.error(res?.data?.error || 'No se pudieron generar preguntas.');
         return;
       }
 
@@ -73,26 +80,28 @@ function CreateInterviewDialog() {
 
   return (
     <Dialog>
-      <DialogTrigger>
+      <DialogTrigger asChild>
         <Button>+ Create interview</Button>
       </DialogTrigger>
       <DialogContent className='min-w-3xl'>
         <DialogHeader>
           <DialogTitle>Please submit following details</DialogTitle>
-          <DialogDescription>
-            <Tabs defaultValue="resume-upload" className="w-full mt-5">
-              <TabsList>
-                <TabsTrigger value="resume-upload">Resume Upload</TabsTrigger>
-                <TabsTrigger value="job-description">Job Description</TabsTrigger>
-              </TabsList>
-              <TabsContent value="resume-upload"><ResumeUpload setFiles={(file: File) => setFile(file)} /></TabsContent>
-              <TabsContent value="job-description"><JobDescription onHandleInputChange={onHandleInputChange} />
-              </TabsContent>
-            </Tabs>
+          <DialogDescription asChild>
+            <div>
+              <Tabs defaultValue="resume-upload" className="w-full mt-5">
+                <TabsList>
+                  <TabsTrigger value="resume-upload">Resume Upload</TabsTrigger>
+                  <TabsTrigger value="job-description">Job Description</TabsTrigger>
+                </TabsList>
+                <TabsContent value="resume-upload"><ResumeUpload setFiles={(file: File) => setFile(file)} /></TabsContent>
+                <TabsContent value="job-description"><JobDescription onHandleInputChange={onHandleInputChange} />
+                </TabsContent>
+              </Tabs>
+            </div>
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className='flex gap-6'>
-          <DialogClose>
+          <DialogClose asChild>
             <Button variant={'ghost'}>Cancel</Button>
           </DialogClose>
           <Button onClick={onSubmit} disabled={loading || !file} >
